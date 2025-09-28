@@ -3,14 +3,11 @@ import os, time, math, cv2, numpy as np
 from datetime import datetime
 from cvzone.HandTrackingModule import HandDetector
 
-
-# ----------------- setup -----------------
 cap = cv2.VideoCapture(0)
 cap.set(3, 1280)
 cap.set(4, 720)
 
 detector = HandDetector(detectionCon=0.35, maxHands=1)
-
 save_dir = "booth"
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
@@ -23,40 +20,37 @@ t_pinch = 0.0
 t_count = None
 status = "idle"
 
-# ----------------- filters -----------------
 def apply_filter(img, fid):
     if fid == 0:
-        # original
+        #original
         return img
     elif fid == 1:
-        # black & white
+        #black and white
         g = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         return cv2.cvtColor(g, cv2.COLOR_GRAY2BGR)
     elif fid == 2:
-        # rainbow
+        #rainbow
         g = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         g = cv2.GaussianBlur(g, (3, 3), 0)
         return cv2.applyColorMap(g, cv2.COLORMAP_RAINBOW)
     elif fid == 3:
-        # sepia-like (using autumn colormap)
+        #sepia like (using autumn colormap)
         g = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         g = cv2.GaussianBlur(g, (3, 3), 0)
         return cv2.applyColorMap(g, cv2.COLORMAP_AUTUMN)
     elif fid == 4:
-        # cool/teal (using winter colormap)
+        #cool/teal (using winter colormap)
         g = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         g = cv2.GaussianBlur(g, (3, 3), 0)
         return cv2.applyColorMap(g, cv2.COLORMAP_WINTER)
     elif fid == 5:
-        # hot/fire look
+        #hot/fire look
         g = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         g = cv2.GaussianBlur(g, (3, 3), 0)
         return cv2.applyColorMap(g, cv2.COLORMAP_HOT)
     else:
         return img
 
-
-# ----------------- draw helpers -----------------
 def draw_grid(img, n=3, color=(140, 140, 140)):
     h, w = img.shape[:2]
     i = 1
@@ -66,7 +60,6 @@ def draw_grid(img, n=3, color=(140, 140, 140)):
         cv2.line(img, (x, 0), (x, h), color, 1, cv2.LINE_AA)
         cv2.line(img, (0, y), (w, y), color, 1, cv2.LINE_AA)
         i += 1
-
 
 def draw_hud(img, filter_id_value, status_text, shots_len):
     lines = [
@@ -79,7 +72,6 @@ def draw_hud(img, filter_id_value, status_text, shots_len):
         cv2.putText(img, t, (12, y), cv2.FONT_HERSHEY_SIMPLEX, 1, (60, 220, 60), 2, cv2.LINE_AA)
         y += 32
 
-
 def draw_thumbs(view, base_w, base_h, frames):
     tw = 150
     x0 = base_w - (tw + 10)
@@ -91,8 +83,6 @@ def draw_thumbs(view, base_w, base_h, frames):
         view[y:y + th.shape[0], x0:x0 + tw] = th
         i += 1
 
-
-# ----------------- io helpers -----------------
 def save_collage(imgs, path):
     s = 380
     pad = 10
@@ -110,7 +100,6 @@ def save_collage(imgs, path):
         canvas[y:y + s, x:x + s] = im
 
     cv2.imwrite(path, canvas)
-
 
 def split_findhands_result(result, fallback_frame):
     if isinstance(result, tuple):
@@ -135,8 +124,6 @@ def split_findhands_result(result, fallback_frame):
 
     return fallback_frame, result
 
-
-# ----------------- loop -----------------
 while True:
     ok, frame = cap.read()
     if not ok:
@@ -185,7 +172,7 @@ while True:
             cv2.putText(view, "fingers:%s" % str(dbg), (12, 120),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 200, 255), 2, cv2.LINE_AA)
 
-            # pinch → countdown
+            #countdown (pinch)
             d, _, _ = detector.findDistance(lm[4][:2], lm[8][:2], frame_drawn)
             if (not pinching) and (d < PINCH_ON):
                 pinching = True
@@ -194,21 +181,20 @@ while True:
                 status = "countdown"
             if pinching and (d > PINCH_OFF):
                 pinching = False
-
-            # gestures
+            #gestures
             fingers = detector.fingersUp(hand)
             if fingers == [1, 0, 0, 0, 0]:
-                # thumbs-up --> next filter
-                filter_id = (filter_id + 1) % 6  # cycle 0..5
+                #thumbs-up, next filter
+                filter_id = (filter_id + 1) % 6  
                 status = "filter"
                 time.sleep(1.0)
             elif fingers == [1, 1, 1, 1, 1]:
-                # palm --> toggle grid
+                #palm, toggle grid
                 show_grid = not show_grid
                 status = "grid"
                 time.sleep(1.0)
             elif fingers == [0, 0, 0, 0, 0] and len(shots) > 0:
-                # fist --> save collage
+                #fist, save collage
                 imgs = shots[-4:]
                 while len(imgs) < 4:
                     imgs.append(imgs[-1])
@@ -218,9 +204,9 @@ while True:
                 status = "saved"
                 time.sleep(0.25)
 
-    # countdown / capture
+    #countdown, capture
     if t_count is not None:
-    # countdown display
+    #countdown display
         secs = int(now - t_count)
         left = max(1, 3 - secs)
         overlay = view.copy()
@@ -228,7 +214,7 @@ while True:
                     cv2.FONT_HERSHEY_SIMPLEX, 4, (0, 255, 0), 10, cv2.LINE_AA)
         view = cv2.addWeighted(overlay, 0.35, view, 0.65, 0)
 
-        # take shot after 3 seconds
+        #take shot after 3 seconds
         if secs >= 3:
             shots.append(apply_filter(base, filter_id))
             t_count = None
@@ -239,7 +225,6 @@ while True:
                 save_collage(shots[-4:], os.path.join(save_dir, fname))
                 status = "saved"
                 time.sleep(0.25)
-
 
     draw_thumbs(view, W, H, shots)
     draw_hud(view, filter_id, status, len(shots))
