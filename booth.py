@@ -1,4 +1,3 @@
-# booth.py — five filters: none, b&w, rainbow, sepia, teal-orange (plus original = 0)
 import os, time, math, cv2, numpy as np
 from datetime import datetime
 from cvzone.HandTrackingModule import HandDetector
